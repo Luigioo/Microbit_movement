@@ -28,6 +28,7 @@ let Zthreshold = 300
 let Ythreshold = 10
 let Xthreshold = 10
 timet = 12
+//new stuff
 let xleast = 100
 let yleast = 100
 let positions = [100, 100]
@@ -37,7 +38,17 @@ let xdis = 0;
 let ydis = 0;
 let xmiss = 0;
 let ymiss = 0;
-
+// low pass filter https://www.w3.org/TR/motion-sensors/#low-pass-filter
+const bias = 0.8
+let oldxacc = input.acceleration(Dimension.X);
+let oldyacc = input.acceleration(Dimension.Y);
+let oldzacc = input.acceleration(Dimension.Z);
+function updateLowFilter(xmov: number, ymov: number, zmov: number) {
+    oldxacc = oldxacc * bias + xmov * (1 - bias)
+    oldyacc = oldyacc * bias + ymov * (1 - bias)
+    oldzacc = oldzacc * bias + zmov * (1 - bias)
+}
+//
 input.setAccelerometerRange(AcceleratorRange.FourG)
 // serial.writeString("{\"x\":" + Xmovement + ", \"y\":" + Ymovement + ", \"z\":" + Zmovement + "}")
 // serial.writeLine("{\"x\":" + xv + ", \"y\":" + yv + ", \"z\":" + Zmovement + "}")
@@ -45,9 +56,14 @@ loops.everyInterval(100, function () {
     xdis += xv * 0.5
     ydis += yv * 0.5
 
-    serial.writeValue("xv", xv)
-    serial.writeValue("yv", yv)
+    let xtilt = input.rotation(Rotation.Pitch)
+    let ytilt = input.rotation(Rotation.Roll)
+    let compass = input.compassHeading()
+    serial.writeValue("xtilt", xtilt)
+    serial.writeValue("ytilt", ytilt)
+    // serial.writeValue("compass", compass)
 })
+
 basic.forever(function () {
     // get some delta Time
     curTime = input.runningTimeMicros()
@@ -66,7 +82,7 @@ basic.forever(function () {
                 Xold = Xmovement
 
                 xv += Xmovement / 1024 * 9.807 * delt
-                xmiss = Math.max(0, xmiss+1);
+                xmiss = Math.max(0, xmiss + 1);
                 if (Xmovement > 0) {
                     led.plot(4, 2)
                 } else {
@@ -75,7 +91,7 @@ basic.forever(function () {
             }
             else {
                 xmiss = Math.min(0, xmiss - 1);
-                if(xmiss<5){
+                if (xmiss < 5) {
                     xv = 0;
                 }
             }
@@ -89,7 +105,7 @@ basic.forever(function () {
         if (Ymovement != Yold) {
             if (Ymovement < Yold - Ythreshold || Ymovement > Yold + Ythreshold) {
                 Yold = Ymovement
-                yv += Ymovement / 1023 * 9.807 * delt
+                yv += Ymovement / 1024 * 9.807 * delt
                 ymiss = Math.max(0, ymiss + 1);
             } else {
                 ymiss = Math.min(0, ymiss - 1);
@@ -98,7 +114,7 @@ basic.forever(function () {
                 }
             }
             // if (Math.abs(Ymovement) > yleast) {
-               
+
             //     if (Ymovement > 0) {
             //         led.plot(2, 4)
             //     } else {
