@@ -1,9 +1,4 @@
-bluetooth.onBluetoothConnected(function () {
 
-})
-bluetooth.onBluetoothDisconnected(function () {
-
-})
 input.onButtonPressed(Button.A, function () {
     serial.writeLine("hellow")
 })
@@ -48,19 +43,35 @@ function updateLowFilter(xmov: number, ymov: number, zmov: number) {
     oldyacc = oldyacc * bias + ymov * (1 - bias)
     oldzacc = oldzacc * bias + zmov * (1 - bias)
 }
+//compass in radians
+function getCompass(){
+    return input.compassHeading() / 180 * Math.PI
+}
+let oldcompass = getCompass();
 //
 input.setAccelerometerRange(AcceleratorRange.FourG)
 // serial.writeString("{\"x\":" + Xmovement + ", \"y\":" + Ymovement + ", \"z\":" + Zmovement + "}")
 // serial.writeLine("{\"x\":" + xv + ", \"y\":" + yv + ", \"z\":" + Zmovement + "}")
-loops.everyInterval(100, function () {
-    xdis += xv * 0.5
-    ydis += yv * 0.5
+loops.everyInterval(200, function () {
+    let xrelDis = xv * 0.2    //speed * time
+    let yrelDis = yv * 0.2
+    //total distance:
+    let totalDis = Math.sqrt(xrelDis*xrelDis+yrelDis*yrelDis)
 
-    let xtilt = input.rotation(Rotation.Pitch)
-    let ytilt = input.rotation(Rotation.Roll)
-    let compass = input.compassHeading()
-    serial.writeValue("xtilt", xtilt)
-    serial.writeValue("ytilt", ytilt)
+    // let xtilt = input.rotation(Rotation.Pitch)
+    // let ytilt = input.rotation(Rotation.Roll)
+    oldcompass = oldcompass*bias+getCompass()*(1-bias)
+    let vectorx = Math.cos(oldcompass)
+    let vectory = Math.sin(oldcompass)
+    
+    //actual positions
+    xdis += vectorx*totalDis
+    ydis += vectory*totalDis
+    serial.writeValue("heading", oldcompass)
+    serial.writeValue("x", xdis)
+    serial.writeValue("y", ydis)
+
+    // serial.writeValue("check", Math.sqrt(vectory*vectory+vectorx*vectorx))
     // serial.writeValue("compass", compass)
 })
 
@@ -96,7 +107,7 @@ basic.forever(function () {
                 }
             }
         }
-        serial.writeValue("xmiss", xmiss);
+        // serial.writeValue("xmiss", xmiss);
 
         // if (Math.abs(Xmovement) > xleast) {
 
